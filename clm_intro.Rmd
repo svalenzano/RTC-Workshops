@@ -1,0 +1,237 @@
+# Cumulative link models (CLMs)
+
+RTC Methods Club, February 20, 2025
+
+Isaac Kinley & Sabrina Valenzano
+
+## Introduction
+
+We're familiar with how to deal with continuous response data (linear regression) and binary data (logistic regression), but what about **ordinal data**?
+
+Ordinal data consists of observations that fall into a series of **ordered levels**. In other words, we know how to arrange the observations in some order, but we don't know anything about the distances between levels. Importantly, even if the levels have numerical labels, it is not appropriate to treat these as observations on a continuous scale.
+
+A common example of ordinal data in psychology is Likert-scale survey responses:
+
+1.  Strongly disagree
+2.  Somewhat disagree
+3.  Neutral
+4.  Somewhat agree
+5.  Strongly agree
+
+The wording is chosen so that successive levels seem roughly equidistant, but we can't pretend we're working with numerical measurements on a continuous scale. In fact, we're working with categorical measurements on an ordinal scale, and cumulative link models (CLMs) are more appropriate for this type of data.
+
+## Terminology
+
+We're using the term "CLMs" today because it matches the name of the `clm` function we'll be using, but these models have many other names:
+
+-   Ordinal regression
+-   Proportional odds models
+-   Ordered logit (or probit)
+
+## CLMs vs logistic regression
+
+Let's review logistic regression. We have some variable $Y$ that can take on values 0 or 1, and we model the probability that it takes on each value according to an intercept $\theta$ a predictor variable or set of variables $x$, and a coefficient or set of coefficients $\beta$ that estimate the relationship between $x$ and $Y$:
+
+$$
+P(Y = 1) = \sigma(\theta + x\beta)
+$$
+
+Here is how the logistic function $\sigma(x)$ looks:
+
+```{r}
+x <- seq(-5, 5, l = 1000)
+plot(plogis(x) ~ x, ylab = 'σ(x)', type = 'l')
+```
+
+We can think of CLMs as a series of logistic regressions. If our observation falls into ordinal categories labeled 1, 2, 3, 4, and 5 (as with a Likert-type scale), our model is as follows:
+
+$$
+P(Y \leq 1) = \sigma(\theta_1 + x\beta) \\
+P(Y \leq 2) = \sigma(\theta_2 + x\beta) \\
+P(Y \leq 3) = \sigma(\theta_3 + x\beta) \\
+P(Y \leq 4) = \sigma(\theta_4 + x\beta) \\
+P(Y \leq 5) = 1 \\
+$$
+
+I.e., we are modelling the probability that the observation is less than or equal to 1, less than or equal to 2, etc., with a series of intercepts.
+
+
+Since we are 
+## Ordinal data example
+
+Let's generate some imaginary data. Suppose we know people's heights and we've asked whether they agree with the statement "tall people rock" on a Likert scale [Sabrina please let me know if you think of anything better lol]:
+
+```{r}
+set.seed(123) # So that everyone has the same random data
+height <- 1.65 + rnorm(100, sd = 0.07)
+latent_var <- height + rnorm(100, sd = 0.1)
+data <- data.frame(
+  height = height,
+  agreement = cut(latent_var,
+                  breaks = c(-Inf, quantile(latent_var, probs = c(0.1, 0.2, 0.5, 0.9)), Inf),
+                  labels = c('Strongly disagree',
+                             'Disagree',
+                             'Neutral',
+                             'Agree',
+                             'Strongly agree'))
+)
+head(data)
+```
+
+We can see from the following boxplot that there is a strong association between height and agreement:
+
+```{r}
+boxplot(height ~ agreement, data = data)
+```
+
+## CLM example
+
+As much as it might be tempting to run `summary(lm(agreement ~ height, data = data))` and call it a day, this would be pretending out Likert scale responses are a numerical measurement on a continuous scale, which they aren't. Take a look here when we try to fit a lm on ordinal data - we make the false assumption of equal spacing between ordinal categories
+
+```{r}
+# Convert agreement to numeric for plotting
+agreement_numeric <- as.numeric(data$agreement)
+
+# Fit linear model
+lm_model <- lm(agreement_numeric ~ height, data = data)
+
+# Plot regression line on raw ordinal data
+plot(height, agreement_numeric, 
+     xlab = "Height", ylab = "Agreement (Numeric)",
+     main = "Linear Model Fit with Ordinal Data",
+     pch = 16, col = "blue")+
+# Add linear regression line
+abline(lm_model, col = "red")
+
+```
+
+As you can see, the figure illustrates that the linear model does not appropriately capture the structure of the ordinal data. The fitted regression line does not align well with the categorical nature of the outcome.
+
+Instead, we'll use the `clm` function from the `ordinal` package :
+
+# Maybe add - and specificy whether the thresholds are equidistant or symmetric to 'indicate to the software that levels of the response variable are equally spaced or symmetrically spaced' (Mangiafico, 2016). These restrictions can be imposed on thresholds if specificity is preferred.
+
+```{r}
+library(ordinal)
+mod <- clm(agreement ~ height, data = data, threshold = equidistant) # I added this threshold specification here since it might be useful to mention the difference between ordinal scales that assume equal distance between ratings and those that are considered 'symmetrically spaced'. I saw above you considered this to be equidistant so I added it here (not that it is necessary but maybe to point out the difference)
+
+anova(mod)
+```
+
+This shows us that there is indeed a significant association between height and agreement. As with multivariate linear regression, we can test for associations with multiple variables as well as interactions between these, using the same syntax as we would for the `lm` function.
+
+Notice that there are only 4 "thresholds" or intercepts ($\theta$ in the above equations) even though there are 5 categories. This is because the probability of the observation being less than or equal to the highest category is always 1 (so the corresponding $\theta$ is always implicitly infinity).
+
+```{r}
+print(coef(mod)) 
+
+```
+
+## Example 2: multivariate CLM
+
+[under construction; could include a binary predictor variable]
+
+## Plotting CLMs
+
+Before plotting, we need to estimate the probability that a given participant would choose each response option on our ordinal scale (e.g., rating 1, 2, 3, 4, or 5). To do this, we will use ggpredict(), part of the ggeffects package. 
+
+[under construction]
+
+Pitfalls here: the curves do not represent probability density functions. It might be helpful to show a plot for a model where there's no association. (see code below where I removed height + from latent_var to remove association - hopefully this is what you meant)
+
+Also generate a plot for a categorical predictor.
+
+```{r}
+library(ggeffects)
+library(ggplot2)
+## Sabrina start
+# New dataframe with no association 
+set.seed(123) # So that everyone has the same random data
+height <- 1.65 + rnorm(100, sd = 0.07)
+latent_var <- rnorm(100, sd = 0.1) # removed height here
+data <- data.frame(
+  height = height,
+  agreement = cut(latent_var,
+                  breaks = c(-Inf, quantile(latent_var, probs = c(0.1, 0.2, 0.5, 0.9)), Inf),
+                  labels = c('Strongly disagree',
+                             'Disagree',
+                             'Neutral',
+                             'Agree',
+                             'Strongly agree')), 
+  ordered = TRUE
+)
+
+mod <- clm(agreement ~ height, data = data)
+
+# Generate predicted probabilities for each category
+preds <- ggpredict (mod, terms = c("height [all]")) # [all] is used to avoid data being 'prettified' and get smooth plots
+
+plot(preds)+
+  facet_wrap(~response.level, nrow =1)
+
+# Generate plot for categorical predictor (perhaps different groups or condiditons)
+set.seed(123)
+condition <- sample(c("A", "B"), 100, replace = TRUE) 
+condition <- factor(condition, levels = c("A", "B"), ordered = TRUE) # converting variable into factor  
+latent_var <- ifelse(condition == "A", rnorm(100, mean = 0.3), rnorm(100, mean = -0.3))
+data2 <- data.frame(
+  group = factor(condition),
+  agreement = cut(latent_var,
+                  breaks = c(-Inf, quantile(latent_var, probs = c(0.1, 0.2, 0.5, 0.9)), Inf),
+                  labels = c('Strongly disagree',
+                             'Disagree',
+                             'Neutral',
+                             'Agree',
+                             'Strongly agree')), 
+  ordered = TRUE
+)
+
+
+
+mod2 <- clm(agreement ~ condition, data = data2)
+anova(mod2)
+
+# Generate predicted probabilities
+preds2 <- ggpredict(mod2, terms = "condition")
+
+# Plot - looks terrible, maybe we can use your bar graph code that I used for my FRP data, might make more sense with a categorical predictor?
+plot(preds2) +
+  scale_color_discrete(name = "x", labels = c("A", "B"))+ 
+  facet_wrap(~response.level, nrow =1)
+
+## Sabrina end
+
+newdata <- data.frame(
+  height = seq(1, 2, l = 1000)
+)
+# predict(mod, newdata = newdata, type = 'prob', interval = T)
+preds <- predict(mod, newdata = newdata, type = 'prob')
+preds <- as.data.frame(preds$fit)
+likert_levels <- names(preds)
+preds$height <- newdata$height
+long_fmt <- reshape(preds, direction = 'long',
+        varying = likert_levels,
+        v.names = 'prob',
+        idvar = 'height',
+        timevar = 'response')
+library(ggplot2)
+
+ggplot(long_fmt, aes(x = height, y = prob, colour = response, group = response)) + 
+  geom_line()
+```
+
+
+
+## Mixed effects CLMs (CLMMs)
+
+Cumulative link mixed effects models (CLMMs) allow us to run ordinal regression while accounting for any amount of normally distributed random effects, making them suitable for data that includes repeated measurements from the same participants. 
+
+You will notice that the syntax for clmms is similar to the formula used for lmer from the lme4 package.
+
+Note: when the ordinal variable has only two levels, both the CLMM approach and random-effect logistic regression yield equivalent results (Bousquet, 2021).
+
+```{r}
+
+```
+
+
