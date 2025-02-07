@@ -1,4 +1,4 @@
-Before methods club (February 20, 2025) please make sure you download R & RStudio (version v1.4 or later), install the ordinal library, 
+Before methods club (February 20, 2025), please make sure you download R & RStudio (version v1.4 or later), install the ordinal library, 
 and download the attached R notebook!
 
 Follow along as we:
