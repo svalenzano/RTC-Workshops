@@ -1,3 +1,7 @@
+---
+---
+---
+
 # Cumulative link models (CLMs)
 
 TODO:
@@ -50,40 +54,38 @@ x <- seq(-5, 5, l = 1000)
 plot(plogis(x) ~ x, ylab = 'σ(x)', type = 'l')
 ```
 
-We can think of CLMs as a series of logistic regressions. If our observations $Y$ fall into ordinal categories labeled 1, 2, 3, 4, and 5 (as with a Likert-type scale), our model is as follows:
+It's helpful to think of CLMs as a series of logistic regressions. If our observations $Y$ fall into ordinal categories labeled 1, 2, 3, 4, and 5 (as with a Likert-type scale), our model is as follows:
 
 $$
-P(Y =1) = \sigma(\theta_1 + x\beta) \\
+P(Y \leq 1) = \sigma(\theta_1 + x\beta) \\
 P(Y \leq 2) = \sigma(\theta_2 + x\beta) \\
 P(Y \leq 3) = \sigma(\theta_3 + x\beta) \\
 P(Y \leq 4) = \sigma(\theta_4 + x\beta) \\
 P(Y \leq 5) = 1 \\
 $$
 
-I.e., we are modelling the probability that the observation is less than or equal to 1, less than or equal to 2, etc., with a series of intercepts $\theta_1$, $\theta_2$, etc. and a *single* set of coefficients $\beta$.
+I.e., we are modelling the probability that the observation is less than or equal to 1, less than or equal to 2, etc., with a series of intercepts $\theta_1$, $\theta_2$, etc. and a single set of coefficients $\beta$.
 
-Since we are
+Since we are [...]
 
-## CLM examples
-
-### Continuous predictor
+## CLM example
 
 Let's generate some imaginary data. Suppose we know people's heights and we've asked whether they agree with the statement "tall people rock" on a Likert scale [Sabrina please let me know if you think of anything better lol]. Don't worry about the details of how we're simulating this—presumably you'll already have your own ordinal data.
 
 ```{r}
 set.seed(123) # So that we all have the same random data
 ndata <- 1000
-cont <- 1.65 + rnorm(1000, sd = 0.07)
-categ <- runif(1000) < 0.6 + 0
-latent_var <- 0.6*cont + 0.5*categ + 0.8*rnorm(100, sd = 0.1)
+cont <- 1.65 + rnorm(ndata, sd = 0.07)
+categ_effs <- c('A' = 0.5, 'B' = 0.6)
+categ <- sample(names(categ_effs), ndata, replace = T)
+latent_var <- 0.5*cont + categ_effs[categ] + rnorm(100, sd = 0.1)
 data <- data.frame(
   height = cont,
-  categ = factor(categ,
-                 levels = c(T, F),
-                 labels = c('A', 'B')),
+  categ = as.factor(categ),
   agreement = cut(latent_var,
                   breaks = c(-Inf, quantile(latent_var,
-                                            probs = c(0.1, 0.2, 0.5, 0.9)), Inf),
+                                            probs = c(0.1, 0.2, 0.5, 0.9)),
+                             Inf),
                   labels = c('Strongly disagree',
                              'Disagree',
                              'Neutral',
@@ -102,19 +104,19 @@ boxplot(height ~ agreement, data = data)
 As much as it might be tempting to run `summary(lm(agreement ~ height, data = data))` and call it a day, this would be pretending our Likert-scale responses are a numerical measurement on a continuous scale, which they aren't. Take a look here when we try to fit a `lm` on ordinal data - we make the false assumption of equal spacing between ordinal categories
 
 ```{r}
-# Convert agreement to numeric for plotting
-agreement_numeric <- as.numeric(data$agreement)
-
-# Fit linear model
-lm_model <- lm(agreement_numeric ~ height, data = data)
-
-# Plot regression line on raw ordinal data
-plot(height, agreement_numeric, 
-     xlab = "Height", ylab = "Agreement (Numeric)",
-     main = "Linear Model Fit with Ordinal Data",
-     pch = 16, col = "blue")+
-# Add linear regression line
-abline(lm_model, col = "red")
+# # Convert agreement to numeric for plotting
+# agreement_numeric <- as.numeric(data$agreement)
+# 
+# # Fit linear model
+# lm_model <- lm(agreement_numeric ~ height, data = data)
+# 
+# # Plot regression line on raw ordinal data
+# plot(height, agreement_numeric, 
+#      xlab = "Height", ylab = "Agreement (Numeric)",
+#      main = "Linear Model Fit with Ordinal Data",
+#      pch = 16, col = "blue")+
+# # Add linear regression line
+# abline(lm_model, col = "red")
 
 ```
 
@@ -126,7 +128,8 @@ Instead, we'll use the `clm` function from the `ordinal` package :
 
 ```{r}
 library(ordinal)
-mod <- clm(agreement ~ height, data = data, threshold = 'equidistant') # I added this threshold specification here since it might be useful to mention the difference between ordinal scales that assume equal distance between ratings and those that are considered 'symmetrically spaced'. I saw above you considered this to be equidistant so I added it here (not that it is necessary but maybe to point out the difference)
+mod <- clm(agreement ~ height + categ, data = data)
+# mod <- clm(agreement ~ height, data = data, threshold = 'equidistant') # I added this threshold specification here since it might be useful to mention the difference between ordinal scales that assume equal distance between ratings and those that are considered 'symmetrically spaced'. I saw above you considered this to be equidistant so I added it here (not that it is necessary but maybe to point out the difference)
 
 anova(mod)
 ```
@@ -136,17 +139,85 @@ This shows us that there is indeed a significant association between height and 
 Notice that there are only 4 "thresholds" or intercepts ($\theta$ in the above equations) even though there are 5 categories. This is because the probability of the observation being less than or equal to the highest category is always 1 (so the corresponding $\theta$ is always implicitly infinity).
 
 ```{r}
-print(coef(mod)) 
-
+print(coef(mod))
 ```
 
-### Categorical predictor
+## Plotting CLMs
 
-Let's add another independent predictor:
+Visualizing the associations between our predictors and our ordinal outcome variable is straightforward with the `ggeffects` library. This library has a function called `ggpredict` that allows us to predict and then plot the probabilities of each ordinal response level for the different levels of our predictors. To see how it works, we'll first import the necessary libraries:
 
-## Plotting CLMs: continuous predictors
+```{r}
+library(ggplot2)
+library(ggeffects)
+```
 
-## Plotting CLMs: categorical predictors?
+### Visualizing continuous predictors
+
+`ggpredict` takes an argument called `terms` that specifies which predictors we're interested in. For continuous predictors, it's a good idea to add `[all]` so that predictions are generated for many values of the continuous predictor and the plot looks smooth:
+
+```{r}
+preds_con <- ggpredict(mod, terms = c("height [all]"))
+plot(preds_con)
+```
+
+It's tempting to interpret these as probability distributions, but they aren't—the areas under the curves don't have to sum to 1. In other words, the probabilities on the y-axes represent the probability of the response level given the predictor level, rather than the probability of the predictor level given the response level.
+
+### Categorical predictors
+
+The syntax for plotting categorical predictors is basically the same, except that it's not necessary to add `[all]` after the name of the predictor:
+
+```{r}
+# Generate predicted probabilities
+preds_cat <- ggpredict(mod, terms = c("categ"))
+plot(preds_cat)
+```
+
+For each of these, if we wanted to make sure all of the subplots ("facets" in ggplot terminology) are on the same line, we could add `+ facet_wrap(~response.level, nrow = 1)`:
+
+```{r}
+plot(preds_con) + facet_wrap(~response.level, nrow = 1)
+plot(preds_cat) + facet_wrap(~response.level, nrow = 1)
+```
+
+### Customizing graphs
+
+So far, we've just used a simple call to `plot()`, but this doesn't give us much control over how the plot is rendered. Instead, we can convert the output of `ggpredict` to a `data.frame` object that we can then pass to `ggplot`:
+
+```{r}
+preds <- ggpredict(mod, terms = c("categ"))
+df <- as.data.frame(preds,
+                    terms_to_colnames = T) # This is important to include!
+head(df)
+```
+
+As we can see, we have a different row for each combination of predictor variable level and response variable level, along with the predicted probability of the response given the predictor, and the upper and lower boundaries of the confidence interval (95% by default). We can use this info to create any kind of plot we want:
+
+```{r}
+ggplot(df, aes(y = predicted, x = agreement, fill = agreement)) +
+  geom_col(position = position_dodge()) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = 0) +
+  facet_wrap(~categ, nrow = 1) +
+  scale_fill_gradientn(colours = c('cornflowerblue', 'wheat', 'tomato')) +
+  theme_classic()
+```
+
+Another idea (very experimental)
+
+```{r}
+preds <- ggpredict(mod, terms = c("height [1.4,1.5,1.6,1.7,1.8,1.9]"))
+df <- as.data.frame(preds,
+                    terms_to_colnames = T) # This arg is important!
+ggplot(df, aes(y = predicted, x = agreement, fill = height, group = height)) +
+  geom_col(position = position_dodge()) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = 0,
+                position = position_dodge(width = 0.9)) +
+  scale_fill_gradientn(colours = c('cornflowerblue', 'wheat', 'tomato')) +
+  theme_classic()
+```
+
+### Customizing visualizations
 
 Before plotting, we need to estimate the probability that a given participant would choose each response option on our ordinal scale (e.g., rating 1, 2, 3, 4, or 5). To do this, we will use ggpredict(), part of the ggeffects package.
 
@@ -157,82 +228,82 @@ Pitfalls here: the curves do not represent probability density functions. It mig
 Also generate a plot for a categorical predictor.
 
 ```{r}
-library(ggeffects)
-library(ggplot2)
-## Sabrina start
-# New dataframe with no association 
-set.seed(123) # So that everyone has the same random data
-height <- 1.65 + rnorm(100, sd = 0.07)
-latent_var <- rnorm(100, sd = 0.1) # removed height here
-data <- data.frame(
-  height = height,
-  agreement = cut(latent_var,
-                  breaks = c(-Inf, quantile(latent_var, probs = c(0.1, 0.2, 0.5, 0.9)), Inf),
-                  labels = c('Strongly disagree',
-                             'Disagree',
-                             'Neutral',
-                             'Agree',
-                             'Strongly agree')), 
-  ordered = TRUE
-)
-
-mod <- clm(agreement ~ height, data = data)
-
-# Generate predicted probabilities for each category
-preds <- ggpredict(mod, terms = c("height [all]")) # [all] is used to avoid data being 'prettified' and get smooth plots
-
-plot(preds)+
-  facet_wrap(~response.level, nrow =1)
-
-# Generate plot for categorical predictor (perhaps different groups or condiditons)
-set.seed(123)
-condition <- sample(c("A", "B"), 100, replace = TRUE) 
-condition <- factor(condition, levels = c("A", "B"), ordered = TRUE) # converting variable into factor  
-latent_var <- ifelse(condition == "A", rnorm(100, mean = 0.3), rnorm(100, mean = -0.3))
-data2 <- data.frame(
-  group = factor(condition),
-  agreement = cut(latent_var,
-                  breaks = c(-Inf, quantile(latent_var, probs = c(0.1, 0.2, 0.5, 0.9)), Inf),
-                  labels = c('Strongly disagree',
-                             'Disagree',
-                             'Neutral',
-                             'Agree',
-                             'Strongly agree')), 
-  ordered = TRUE
-)
-
-
-
-mod2 <- clm(agreement ~ condition, data = data2)
-anova(mod2)
-
-# Generate predicted probabilities
-preds2 <- ggpredict(mod2, terms = "condition")
-
-# Plot - looks terrible, maybe we can use your bar graph code that I used for my FRP data, might make more sense with a categorical predictor?
-plot(preds2) +
-  scale_color_discrete(name = "x", labels = c("A", "B"))+ 
-  facet_wrap(~response.level, nrow =1)
-
-## Sabrina end
-
-newdata <- data.frame(
-  height = seq(1, 2, l = 1000)
-)
-# predict(mod, newdata = newdata, type = 'prob', interval = T)
-preds <- predict(mod, newdata = newdata, type = 'prob')
-preds <- as.data.frame(preds$fit)
-likert_levels <- names(preds)
-preds$height <- newdata$height
-long_fmt <- reshape(preds, direction = 'long',
-        varying = likert_levels,
-        v.names = 'prob',
-        idvar = 'height',
-        timevar = 'response')
-library(ggplot2)
-
-ggplot(long_fmt, aes(x = height, y = prob, colour = response, group = response)) + 
-  geom_line()
+# library(ggeffects)
+# library(ggplot2)
+# ## Sabrina start
+# # New dataframe with no association 
+# set.seed(123) # So that everyone has the same random data
+# height <- 1.65 + rnorm(100, sd = 0.07)
+# latent_var <- rnorm(100, sd = 0.1) # removed height here
+# data <- data.frame(
+#   height = height,
+#   agreement = cut(latent_var,
+#                   breaks = c(-Inf, quantile(latent_var, probs = c(0.1, 0.2, 0.5, 0.9)), Inf),
+#                   labels = c('Strongly disagree',
+#                              'Disagree',
+#                              'Neutral',
+#                              'Agree',
+#                              'Strongly agree')), 
+#   ordered = TRUE
+# )
+# 
+# mod <- clm(agreement ~ height, data = data)
+# 
+# # Generate predicted probabilities for each category
+# preds <- ggpredict(mod, terms = c("height [all]")) # [all] is used to avoid data being 'prettified' and get smooth plots
+# 
+# plot(preds)+
+#   facet_wrap(~response.level, nrow =1)
+# 
+# # Generate plot for categorical predictor (perhaps different groups or condiditons)
+# set.seed(123)
+# condition <- sample(c("A", "B"), 100, replace = TRUE) 
+# condition <- factor(condition, levels = c("A", "B"), ordered = TRUE) # converting variable into factor  
+# latent_var <- ifelse(condition == "A", rnorm(100, mean = 0.3), rnorm(100, mean = -0.3))
+# data2 <- data.frame(
+#   group = factor(condition),
+#   agreement = cut(latent_var,
+#                   breaks = c(-Inf, quantile(latent_var, probs = c(0.1, 0.2, 0.5, 0.9)), Inf),
+#                   labels = c('Strongly disagree',
+#                              'Disagree',
+#                              'Neutral',
+#                              'Agree',
+#                              'Strongly agree')), 
+#   ordered = TRUE
+# )
+# 
+# 
+# 
+# mod2 <- clm(agreement ~ condition, data = data2)
+# anova(mod2)
+# 
+# # Generate predicted probabilities
+# preds2 <- ggpredict(mod2, terms = "condition")
+# 
+# # Plot - looks terrible, maybe we can use your bar graph code that I used for my FRP data, might make more sense with a categorical predictor?
+# plot(preds2) +
+#   scale_color_discrete(name = "x", labels = c("A", "B"))+ 
+#   facet_wrap(~response.level, nrow =1)
+# 
+# ## Sabrina end
+# 
+# newdata <- data.frame(
+#   height = seq(1, 2, l = 1000)
+# )
+# # predict(mod, newdata = newdata, type = 'prob', interval = T)
+# preds <- predict(mod, newdata = newdata, type = 'prob')
+# preds <- as.data.frame(preds$fit)
+# likert_levels <- names(preds)
+# preds$height <- newdata$height
+# long_fmt <- reshape(preds, direction = 'long',
+#         varying = likert_levels,
+#         v.names = 'prob',
+#         idvar = 'height',
+#         timevar = 'response')
+# library(ggplot2)
+# 
+# ggplot(long_fmt, aes(x = height, y = prob, colour = response, group = response)) + 
+#   geom_line()
 ```
 
 ## Mixed effects CLMs (CLMMs)
@@ -242,7 +313,3 @@ Cumulative link mixed effects models (CLMMs) allow us to run ordinal regression 
 You will notice that the syntax for clmms is similar to the formula used for lmer from the lme4 package.
 
 Note: when the ordinal variable has only two levels, both the CLMM approach and random-effect logistic regression yield equivalent results (Bousquet, 2021).
-
-```{r}
-
-```
