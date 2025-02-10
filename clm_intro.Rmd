@@ -1,6 +1,3 @@
----
----
----
 
 # Cumulative link models (CLMs)
 
