@@ -8,8 +8,7 @@ TODO:
 
 1.  Figure out any distributional assumptions: if you use logit models, are you assuming a logistically distributed latent variable? Probit models, normally distributed latent variable? There's bound to be a question about this
 2.  How do we decide whether to use structured thresholds?
-3.  How can one plot CLMMs?
-4.  What if one of the predictors is ordinal?
+3.  What if one of the predictors is ordinal?
 
 RTC Methods Club, February 20, 2025
 
@@ -57,10 +56,10 @@ plot(plogis(x) ~ x, ylab = 'σ(x)', type = 'l')
 It's helpful to think of CLMs as a series of logistic regressions. If our observations $Y$ fall into ordinal categories labeled 1, 2, 3, 4, and 5 (as with a Likert-type scale), our model is as follows:
 
 $$
-P(Y \leq 1) = \sigma(\theta_1 + x\beta) \\
-P(Y \leq 2) = \sigma(\theta_2 + x\beta) \\
-P(Y \leq 3) = \sigma(\theta_3 + x\beta) \\
-P(Y \leq 4) = \sigma(\theta_4 + x\beta) \\
+P(Y \leq 1) = \sigma\left(\theta_1 + x\beta\right) \\
+P(Y \leq 2) = \sigma\left(\theta_2 + x\beta\right) \\
+P(Y \leq 3) = \sigma\left(\theta_3 + x\beta\right) \\
+P(Y \leq 4) = \sigma\left(\theta_4 + x\beta\right) \\
 P(Y \leq 5) = 1 \\
 $$
 
@@ -117,7 +116,6 @@ As much as it might be tempting to run `summary(lm(agreement ~ height, data = da
 #      pch = 16, col = "blue")+
 # # Add linear regression line
 # abline(lm_model, col = "red")
-
 ```
 
 As you can see, the figure illustrates that the linear model does not appropriately capture the structure of the ordinal data. The fitted regression line does not align well with the categorical nature of the outcome.
@@ -310,6 +308,49 @@ Also generate a plot for a categorical predictor.
 
 Cumulative link mixed effects models (CLMMs) allow us to run ordinal regression while accounting for any amount of normally distributed random effects, making them suitable for data that includes repeated measurements from the same participants.
 
-You will notice that the syntax for clmms is similar to the formula used for lmer from the lme4 package.
+You will notice that the syntax for CLMMs is similar to the formula used for `lmer()` from the `lme4` package.
 
 Note: when the ordinal variable has only two levels, both the CLMM approach and random-effect logistic regression yield equivalent results (Bousquet, 2021).
+
+The equations underlying CLMMs are the same as those underlying CLMs, except that random effects are incorporated. In our case:
+
+$$
+P(Y \leq 1) = \sigma\left( \theta_1 + \beta x + u\right) \\
+\text{etc.}
+$$
+
+where $u$ is a random intercept. This means that the thresholds are shared across levels of your clustering variable.
+
+```{r}
+set.seed(123)
+n_ptpts <- 20
+n_obs_per <- 5
+ptpt_dfs <- list()
+for (ptpt_n in seq_len(n_ptpts)) {
+  ptpt_intercept <- rnorm(1)
+  cont <- rnorm(n_obs_per)
+  ptpt_dfs[[ptpt_n]] <- data.frame(
+    ptpt = ptpt_n,
+    cont = cont,
+    latent_var = cont + ptpt_intercept + rnorm(n_obs_per, 2)
+  )
+}
+data <- do.call(rbind, ptpt_dfs)
+data$agreement = cut(data$latent_var,
+                     breaks = c(-Inf, quantile(data$latent_var,
+                                               probs = c(0.1, 0.2, 0.4, 0.8)),
+                                Inf),
+                     labels = c('Strongly disagree',
+                                'Disagree',
+                                'Neutral',
+                                'Agree',
+                                'Strongly agree'))
+head(data)
+```
+
+To fit a CLMM to this data, we just need to add the term `(1|ptpt)` to specify that we want a random intercept for each participant:
+
+```{r}
+mod <- clmm(agreement ~ cont + (1|ptpt), data = data)
+summary(mod)
+```
