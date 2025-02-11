@@ -214,8 +214,44 @@ ggplot(df, aes(x = height, y = predicted, group = agreement)) +
 
 ## Mixed effects CLMs (CLMMs)
 
-Cumulative link mixed effects models (CLMMs) allow us to run ordinal regression while accounting for any amount of normally distributed random effects, making them suitable for data that includes repeated measurements from the same participants.
+Mixed effects models (AKA mutlilevel/hierarchical/random-effects models) allow us to analyze repeated-measures data without averaging multiple observations together and thereby losing power. In psychology, mixed effects models are often applied when multiple measurements are made from the same participants. Cumulative link mixed effects models (CLMMs) allow us to apply this type of analysis to ordinal data.
 
-You will notice that the syntax for clmms is similar to the formula used for lmer from the lme4 package.
+Mixed effects models allow us to account for any number of normally distributed "random effects" in our data. In psychology, this usually means accounting for the fact that measurements from the same participant are not independent. The equations underlying CLMMs are the same as those underlying CLMs, except that random effects are incorporated. In our case:
 
-Note: when the ordinal variable has only two levels, both the CLMM approach and random-effect logistic regression yield equivalent results (Bousquet, 2021).
+$$ P(Y \leq 1) = \sigma\left( \theta_1 + \beta x + u\right) \\ P(Y \leq 2) = \sigma\left( \theta_2 + \beta x + u\right) \\ \text{etc.} $$
+
+where $u$ is a random intercept. This means that the thresholds are shared across participants. Whereas before we drew an analogy between logistic regression and CLMs, here we can draw an analogy between mixed-effects logistic regression and CLMMs (indeed, when an ordinal variable has only two levels, the CLMMs and mixed-effects logistic regression yield equivalent results; Bousquet, 2021).
+
+```{r}
+set.seed(123)
+n_ptpts <- 20
+n_obs_per <- 5
+ptpt_dfs <- list()
+for (ptpt_n in seq_len(n_ptpts)) {
+  ptpt_intercept <- rnorm(1)
+  cont <- rnorm(n_obs_per)
+  ptpt_dfs[[ptpt_n]] <- data.frame(
+    ptpt = ptpt_n,
+    cont = cont,
+    latent_var = cont + ptpt_intercept + rnorm(n_obs_per, 2)
+  ) 
+} 
+data <- do.call(rbind, ptpt_dfs)
+data$agreement = cut(data$latent_var,
+                     breaks = c(-Inf, quantile(data$latent_var,
+                                               probs = c(0.1, 0.2, 0.4, 0.8)),
+                                Inf),
+                     labels = c('Strongly disagree',
+                                'Disagree',
+                                'Neutral',
+                                'Agree',
+                                'Strongly agree'))
+head(data)
+```
+
+To fit a CLMM to this data, we just need to add the term `(1|ptpt)` to specify that we want a random intercept for each participant. This is the same syntax as the `lmer` function from the `lme4` package:
+
+```{r}
+mod <- clmm(agreement ~ cont + (1|ptpt), data = data)
+summary(mod)
+```
