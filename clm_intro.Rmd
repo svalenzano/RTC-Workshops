@@ -74,13 +74,13 @@ ndata <- 1000
 cont <- 1.65 + rnorm(ndata, sd = 0.07)
 categ_effs <- c('A' = 0.5, 'B' = 0.6)
 categ <- sample(names(categ_effs), ndata, replace = T)
-latent_var <- 0.5*cont + categ_effs[categ] + rnorm(100, sd = 0.1)
+latent_var <- 0.5*cont + categ_effs[categ] + rnorm(100, sd = 0.05)
 data <- data.frame(
   height = cont,
   categ = as.factor(categ),
   agreement = cut(latent_var,
                   breaks = c(-Inf, quantile(latent_var,
-                                            probs = c(0.1, 0.2, 0.5, 0.9)),
+                                            probs = c(0.1, 0.3, 0.5, 0.8)),
                              Inf),
                   labels = c('Strongly disagree',
                              'Disagree',
@@ -156,7 +156,7 @@ preds_con <- ggpredict(mod, terms = c("height [all]"))
 plot(preds_con)
 ```
 
-It's tempting to interpret these as probability distributions, but they aren't—the areas under the curves don't have to sum to 1. In other words, the probabilities on the y-axes represent the probability of the response level given the predictor level, rather than the probability of the predictor level given the response level.
+It's tempting to interpret these as probability distributions, but they aren't—the areas under the curves don't have to sum to 1. In other words, the probabilities on the y-axes represent the probability of the response level given the predictor level, rather than the probability of the predictor level given the response level. Later, we'll create a custom plot that makes this difference clear.
 
 ### Categorical predictors
 
