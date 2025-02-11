@@ -177,12 +177,12 @@ plot(preds_cat) + facet_wrap(~response.level, nrow = 1)
 
 ### Customizing graphs
 
-So far, we've just used a simple call to `plot()`, but this doesn't give us much control over how the plot is rendered. Instead, we can convert the output of `ggpredict` to a `data.frame` object that we can then pass to `ggplot`:
+So far, we've just used a simple call to `plot()`, but this doesn't give us much control over how the plot is rendered (e.g., which variable is represented by which aspect of the plot). For greater control, we can convert the output of `ggpredict` to a `data.frame` object that we then pass to `ggplot`:
 
 ```{r}
 preds <- ggpredict(mod, terms = c("categ"))
 df <- as.data.frame(preds,
-                    terms_to_colnames = T) # This is important to include!
+                    terms_to_colnames = T) # This is important to include! Otherwise the column names won't correspond to your variable names
 head(df)
 ```
 
@@ -198,7 +198,7 @@ ggplot(df, aes(y = predicted, x = agreement, fill = agreement)) +
   theme_classic()
 ```
 
-And we can do the same thing for continuous predictors to customize our plots:
+We can do the same thing for continuous predictors:
 
 ```{r}
 preds <- ggpredict(mod, terms = c("height [all]"))
