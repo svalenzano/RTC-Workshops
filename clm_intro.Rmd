@@ -9,7 +9,7 @@ TODO:
 
 RTC Methods Club, February 20, 2025
 
-Sabrina Valenzano & Isaac Kinley
+Isaac Kinley & Sabrina Valenzano
 
 ## Introduction
 
@@ -66,7 +66,7 @@ Since we are [...]
 
 ## CLM example
 
-Let's generate some imaginary data. Suppose we know people's heights and we've asked whether they agree with the statement "tall people rock" on a Likert scale [Sabrina please let me know if you think of anything better lol]. Don't worry about the details of how we're simulating this—presumably you'll already have your own ordinal data.
+Let's generate some imaginary data. Suppose we know people's heights and we've asked whether they agree with the statement "I often get recruited to grab things off the top shelf" on a Likert scale. Don't worry about the details of how we're simulating this—presumably you'll already have your own ordinal data.
 
 ```{r}
 set.seed(123) # So that we all have the same random data
@@ -115,18 +115,14 @@ As much as it might be tempting to run `summary(lm(agreement ~ height, data = da
 # abline(lm_model, col = "red")
 
 ```
-
 As you can see, the figure illustrates that the linear model does not appropriately capture the structure of the ordinal data. The fitted regression line does not align well with the categorical nature of the outcome.
 
-Instead, we'll use the `clm` function from the `ordinal` package :
-
-# Maybe add - and specificy whether the thresholds are equidistant or symmetric to 'indicate to the software that levels of the response variable are equally spaced or symmetrically spaced' (Mangiafico, 2016). These restrictions can be imposed on thresholds if specificity is preferred.
+Instead, we'll use the clm function from the ordinal package. Although other packages, such as the polr function from the MASS package, can estimate CLMs, the ordinal package provides additional flexibility. Specifically, it allows for different link functions, the estimation of partial proportional odds models, and the ability to structure thresholds by specifying them as equidistant or symmetrical if appropriate.
 
 ```{r}
 library(ordinal)
 mod <- clm(agreement ~ height + categ, data = data)
-# mod <- clm(agreement ~ height, data = data, threshold = 'equidistant') # I added this threshold specification here since it might be useful to mention the difference between ordinal scales that assume equal distance between ratings and those that are considered 'symmetrically spaced'. I saw above you considered this to be equidistant so I added it here (not that it is necessary but maybe to point out the difference)
-
+# mod <- clm(agreement ~ height, data = data) 
 anova(mod)
 ```
 
@@ -137,7 +133,20 @@ Notice that there are only 4 "thresholds" or intercepts ($\theta$ in the above e
 ```{r}
 print(coef(mod))
 ```
+For simplicity and interpretability, CLMs assume that the effect of the predictor variable is consistent across all cumulative logits. This means that the model imposes the same slope across different thresholds, also known as the proportional odds (PO) assumption. Because of this assumption, there is only one set of odds ratios in an ordinal model - what changes across categories are the thresholds rather than the predictor effects. 
 
+```{r} 
+# To test whether the PO assumption holds, we can use the nominal_test() function. This test checks whether the effect of the predictor varies across different response levels. If the test yields a significant p-value, it suggests that the effect of the predictor differs across the response categories, thereby violating the PO assumption.
+
+nominal_test(mod) 
+
+# If the PO assumption is violated you can run a Partial Proportional Odds Model to relax this assumption. This model allows for certain predictors to be treated as nominal (i.e., varying across thresholds), while still assuming proportional odds for other predictors. 
+
+# mod.nom <- clm(agreement ~ height + categ, nominal = ~ categ, data = data) 
+
+### Can delete this - If you want to compare the two models (the original CLM and the Partial Proportional Odds Model), you can use a likelihood ratio test to assess model fit. 
+# anova(mod, mod.nom) 
+```
 ## Plotting CLMs
 
 Visualizing the associations between our predictors and our ordinal outcome variable is straightforward with the `ggeffects` library. This library has a function called `ggpredict` that allows us to predict and then plot the probabilities of each ordinal response level for the different levels of our predictors. To see how it works, we'll first import the necessary libraries:
