@@ -238,8 +238,7 @@ ggplot(df, aes(x = height, y = predicted, group = top_shelf)) +
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = top_shelf),
               alpha = 0.5) +
   geom_line() +
-  # scale_fill_gradientn(colours = c('cornflowerblue', 'wheat', 'tomato')) +
-  scale_fill_manual()
+  scale_fill_gradientn(colours = c('cornflowerblue', 'wheat', 'tomato')) +
   labs(x = 'Height (m)',
        y = 'Response probability',
        fill = sprintf('Top\nshelf\nrecruit.\nfreq.')) +
