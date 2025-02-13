@@ -1,6 +1,6 @@
 ---
 title: clm_intro
-output: md_document
+output: html_document
 ---
 
 # Cumulative link models (CLMs)
@@ -76,10 +76,10 @@ Let's generate some imaginary data. Suppose we've measured people's heights, ask
 ```{r}
 set.seed(123) # So that we all have the same random data
 ndata <- 1000
-cont <- 1.65 + rnorm(ndata, sd = 0.07)
+cont <- rnorm(ndata, sd = 0.07)
 categ_effs <- c('A' = 0.5, 'B' = 0.6)
 categ <- sample(names(categ_effs), ndata, replace = T)
-latent_var <- 0.5*cont + categ_effs[categ] + rnorm(100, sd = 0.05)
+latent_var <- 1.65 + 0.5*cont + categ_effs[categ] + rnorm(100, sd = 0.05)
 data <- data.frame(
   height = cont,
   heels = factor(categ,
@@ -119,9 +119,9 @@ mod.lin <- lm(top_shelf_num ~ height, data = data)
 plot(top_shelf_num ~ height, data = data,
      xlab = "Height", ylab = "Agreement (Numeric)",
      main = "Linear Model Fit with Ordinal Data",
-     pch = 16, col = "blue")+
+     pch = 16, col = "blue")
 # Add linear regression line
-abline(lm_model, col = "red")
+abline(mod.lin, col = "red")
 ```
 
 As you can see, the figure illustrates that the linear model does not appropriately capture the structure of the ordinal data. The fitted regression line does not align well with the categorical nature of the outcome.
@@ -163,7 +163,15 @@ Notice that now we have 8 threshold coefficients: 4 $\theta$ intercepts and 4 $\
 anova(mod.ppo, mod)
 ```
 
+## Structured thresholds
+
+So far, we've been working with **flexible** thresholds. This means the only restriction we impose on the $\theta$ intercepts is that they're monotonically increasing: i.e., $\theta_1 < \theta_2 < \theta_3 < \ldots$
+
+[Actually is this necessary? Can't find references for when you'd want to impose this, and even the manual is vague about this]
+
 ## Link functions and latent variables
+
+[Include if there's time]
 
 ## Plotting CLMs
 
@@ -249,24 +257,25 @@ Mixed effects models allow us to account for any number of normally distributed 
 
 $$ P(Y \leq 1) = \sigma\left( \theta_1 + \beta x + u\right) \\ P(Y \leq 2) = \sigma\left( \theta_2 + \beta x + u\right) \\ \text{etc.} $$
 
-where $u$ is a random variable representing, e.g., a particular participant's random intercept. This means that the thresholds are shared across participants. Whereas before we drew an analogy between logistic regression and CLMs, here we can draw an analogy between mixed-effects logistic regression and CLMMs (indeed, when an ordinal variable has only two levels, the CLMMs and mixed-effects logistic regression yield equivalent results; Bousquet, 2021).
+where $u$ is a random variable representing, e.g., a particular participant's random intercept. In contrast, the $\theta$ thresholds and $\beta$ coefficients are fied effects that are shared across participants. Whereas before we drew an analogy between logistic regression and CLMs, here we can draw an analogy between mixed-effects logistic regression and CLMMs (indeed, when an ordinal variable has only two levels, the CLMMs and mixed-effects logistic regression yield equivalent results; Bousquet, 2021).
+
+Let's suppose we did the same study longitudinally where we followed up with participants as kids and then adults:
 
 ```{r}
 set.seed(123)
-n_ptpts <- 20
-n_obs_per <- 5
+n_ptpts <- 100
 ptpt_dfs <- list()
 for (ptpt_n in seq_len(n_ptpts)) {
-  ptpt_intercept <- rnorm(1)
-  cont <- rnorm(n_obs_per)
+  ptpt_intercept <- rnorm(2, sd = 0.07)
+  cont <- 1.65 + ptpt_intercept + sort(rnorm(n_obs_per, sd = 0.6))
   ptpt_dfs[[ptpt_n]] <- data.frame(
     ptpt = ptpt_n,
-    cont = cont,
-    latent_var = cont + ptpt_intercept + rnorm(n_obs_per, 2)
+    height = cont,
+    latent_var = cont + rnorm(2, sd = 0.05)
   ) 
 } 
 data <- do.call(rbind, ptpt_dfs)
-data$agreement = cut(data$latent_var,
+data$top_shelf = cut(data$latent_var,
                      breaks = c(-Inf, quantile(data$latent_var,
                                                probs = c(0.1, 0.2, 0.4, 0.8)),
                                 Inf),
@@ -278,9 +287,9 @@ data$agreement = cut(data$latent_var,
 head(data)
 ```
 
-To fit a CLMM to this data, we just need to add the term `(1|ptpt)` to specify that we want a random intercept for each participant. This is the same syntax as the `lmer` function from the `lme4` package:
+Now we have 2 observations per participant. To fit a CLMM to this data, we just need to add the term `(1|ptpt)` to specify that we want a random intercept for each participant. This is the same syntax as the `lmer` function from the `lme4` package:
 
 ```{r}
-mod <- clmm(agreement ~ cont + (1|ptpt), data = data)
-summary(mod)
+mod.me <- clmm(top_shelf ~ height + (1|ptpt), data = data)
+summary(mod.me)
 ```
