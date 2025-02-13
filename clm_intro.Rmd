@@ -13,9 +13,9 @@ Isaac Kinley & Sabrina Valenzano
 
 ## Introduction
 
-We're familiar with how to deal with continuous response data (linear regression) and binary data (logistic regression), but what about **ordinal data**?
+We know how to deal with continuous response data (linear regression) and binary data (logistic regression), but what about **ordinal data**?
 
-Ordinal data consists of observations that fall into a series of **ordered levels**. In other words, we know how to arrange the observations in some order, but we don't know anything about the distances between levels. Importantly, even if the levels have numerical labels, it is not appropriate to treat these as observations on a continuous scale.
+Ordinal data consists of observations that fall into a series of **ordered levels**. In other words, we know how to arrange the observations in some order, but we don't know anything about the distances between levels. Importantly, even if the levels have numerical *labels*, it's still not appropriate to treat these as numerical observations on a continuous scale.
 
 A common example of ordinal data in psychology is Likert-scale survey responses:
 
@@ -25,7 +25,7 @@ A common example of ordinal data in psychology is Likert-scale survey responses:
 4.  Somewhat agree
 5.  Strongly agree
 
-The wording is chosen so that successive levels seem roughly psychologically equidistant, but we can't pretend we're working with numerical measurements on a continuous scale. In fact, we're working with categorical measurements on an ordinal scale, and cumulative link models (CLMs) are more appropriate for this type of data.
+The wording is chosen so that successive levels seem roughly psychologically equidistant, but we still can't pretend we're working with numerical measurements on a continuous scale. In fact, we're working with *categorical* measurements on an *ordinal* scale, and cumulative link models (CLMs) are appropriate for this type of data.
 
 ## Terminology
 
@@ -37,10 +37,10 @@ We're using the term "CLM" today because it matches the name of the `clm` functi
 
 ## CLMs vs logistic regression
 
-To understand CLMs, it's helpful to first review logistic regression. We have some variable $Y$ that can take on values 0 or 1, and we model the probability that it takes on each value according to an intercept $\theta$ a predictor variable or set of variables $x$, and a coefficient or set of coefficients $\beta$ that estimate the relationship between $x$ and $Y$:
+To understand CLMs, it's helpful to first review logistic regression. We have some variable $Y$ that can take on values 0 or 1, and we model the probability that it takes on either value according to an intercept $\theta$ a predictor variable or set of variables $x$, and a coefficient or set of coefficients $\beta$ that estimate the relationship between $x$ and $Y$:
 
 $$
-P(Y = 1) = \sigma(\theta + x\beta)
+P(Y = 1) = \sigma(\theta + \beta x)
 $$
 
 Here is how the logistic function $\sigma(x)$ looks (it's sometimes called a "sigmoid" function because it's S-shaped):
@@ -53,20 +53,18 @@ plot(plogis(x) ~ x, ylab = 'σ(x)', type = 'l')
 It's helpful to think of CLMs as a series of logistic regressions. If our observations $Y$ fall into ordinal categories labeled 1, 2, 3, 4, and 5 (as with a Likert-type scale), our model is as follows:
 
 $$
-P(Y \leq 1) = \sigma(\theta_1 + x\beta) \\
-P(Y \leq 2) = \sigma(\theta_2 + x\beta) \\
-P(Y \leq 3) = \sigma(\theta_3 + x\beta) \\
-P(Y \leq 4) = \sigma(\theta_4 + x\beta) \\
+P(Y \leq 1) = \sigma(\theta_1 + \beta x) \\
+P(Y \leq 2) = \sigma(\theta_2 + \beta x) \\
+P(Y \leq 3) = \sigma(\theta_3 + \beta x) \\
+P(Y \leq 4) = \sigma(\theta_4 + \beta x) \\
 P(Y \leq 5) = 1 \\
 $$
 
-I.e., we are modelling the probability that the observation is less than or equal to 1, less than or equal to 2, etc., with a series of intercepts $\theta_1$, $\theta_2$, etc. and a single set of coefficients $\beta$.
-
-Since we are [...]
+I.e., we are modelling the probability that the observation is less than or equal to 1, less than or equal to 2, etc., with a series of intercepts $\theta_1$, $\theta_2$, etc. and a single set of coefficients $\beta$. In CLM terminology, the $\theta$ variables are called **thresholds**.
 
 ## CLM example
 
-Let's generate some imaginary data. Suppose we know people's heights and we've asked whether they agree with the statement "I often get recruited to grab things off the top shelf" on a Likert scale. Don't worry about the details of how we're simulating this—presumably you'll already have your own ordinal data.
+Let's generate some imaginary data. Suppose we've measured people's heights, asked whether they wear high heels, and asked how often they get recruited to grab things off the top shelf.
 
 ```{r}
 set.seed(123) # So that we all have the same random data
@@ -77,27 +75,31 @@ categ <- sample(names(categ_effs), ndata, replace = T)
 latent_var <- 0.5*cont + categ_effs[categ] + rnorm(100, sd = 0.05)
 data <- data.frame(
   height = cont,
-  categ = as.factor(categ),
-  agreement = cut(latent_var,
+  heels = factor(categ,
+                     levels = c('A', 'B'),
+                     labels = c('No', 'Yes')),
+  top_shelf = cut(latent_var,
                   breaks = c(-Inf, quantile(latent_var,
                                             probs = c(0.1, 0.3, 0.5, 0.8)),
                              Inf),
-                  labels = c('Strongly disagree',
-                             'Disagree',
-                             'Neutral',
-                             'Agree',
-                             'Strongly agree'))
+                  labels = c('Never',
+                             'Rarely',
+                             'Occasionally',
+                             'Frequently',
+                             'Constantly'))
 )
 head(data)
 ```
 
-We can see from the following boxplot that there is a strong association between height and agreement:
+Let's first visualize the association between height and top-shelf-grabbing-recruitment:
 
 ```{r}
-boxplot(height ~ agreement, data = data)
+boxplot(height ~ top_shelf, data = data)
 ```
 
-As much as it might be tempting to run `summary(lm(agreement ~ height, data = data))` and call it a day, this would be pretending our Likert-scale responses are a numerical measurement on a continuous scale, which they aren't. Take a look here when we try to fit a `lm` on ordinal data - we make the false assumption of equal spacing between ordinal categories
+It might be tempting to run `summary(lm(agreement ~ height, data = data))` and call it a day, this would be pretending our Likert-scale responses constitute a numerical measurement on a continuous scale, which they aren't.
+
+Take a look here when we try to fit a `lm` on ordinal data - we make the false assumption of equal spacing between ordinal categories
 
 ```{r}
 # # Convert agreement to numeric for plotting
@@ -115,38 +117,46 @@ As much as it might be tempting to run `summary(lm(agreement ~ height, data = da
 # abline(lm_model, col = "red")
 
 ```
+
 As you can see, the figure illustrates that the linear model does not appropriately capture the structure of the ordinal data. The fitted regression line does not align well with the categorical nature of the outcome.
 
-Instead, we'll use the clm function from the ordinal package. Although other packages, such as the polr function from the MASS package, can estimate CLMs, the ordinal package provides additional flexibility. Specifically, it allows for different link functions, the estimation of partial proportional odds models, and the ability to structure thresholds by specifying them as equidistant or symmetrical if appropriate.
+Instead, we'll use the `clm` function from the `ordinal` package. Although other packages, such as the `polr` function from the `MASS` package, can estimate CLMs, the `ordinal` package provides additional flexibility. Specifically, it allows for different link functions, the estimation of partial proportional odds models, and the ability to structure thresholds by specifying them as equidistant or symmetrical if appropriate.
+
+The `clm` function uses the same syntax (Wilkinson notation) as the familiar `lm` function:
 
 ```{r}
 library(ordinal)
-mod <- clm(agreement ~ height + categ, data = data)
-# mod <- clm(agreement ~ height, data = data) 
-anova(mod)
+mod <- clm(top_shelf ~ height * heels, data = data)
+summary(mod)
 ```
 
-This shows us that there is indeed a significant association between height and agreement. As with multivariate linear regression, we can test for associations with multiple variables as well as interactions between these, using the same syntax as we would for the `lm` function.
+This shows us that top shelf recruitment is indeed associated with height and stiletto wearing, but no interaction. Notice that there are only 4 "thresholds" or intercepts ($\theta$ in the above equations) even though there are 5 categories. This is because the probability of the observation being less than or equal to the highest category is always 1 (so the corresponding $\theta$ is always implicitly infinity).
 
-Notice that there are only 4 "thresholds" or intercepts ($\theta$ in the above equations) even though there are 5 categories. This is because the probability of the observation being less than or equal to the highest category is always 1 (so the corresponding $\theta$ is always implicitly infinity).
+## The proportional odds assumption
+
+CLMs assume that the effect of the predictor variable ($\beta$) is consistent across outcome categories, which is known as the "proportional odds" assumption. In other words, we assume that what changes across categories are the thresholds ($\theta$) rather than the predictor effects ($\beta$). We can test this assumption using the `nominal_test` function, which compares a model with a single $\beta$ across all outcome categories to a model with a different $\beta$ for each outcome category:
 
 ```{r}
-print(coef(mod))
+nominal_test(mod)
 ```
-For simplicity and interpretability, CLMs assume that the effect of the predictor variable is consistent across all cumulative logits. This means that the model imposes the same slope across different thresholds, also known as the proportional odds (PO) assumption. Because of this assumption, there is only one set of odds ratios in an ordinal model - what changes across categories are the thresholds rather than the predictor effects. 
 
-```{r} 
-# To test whether the PO assumption holds, we can use the nominal_test() function. This test checks whether the effect of the predictor varies across different response levels. If the test yields a significant p-value, it suggests that the effect of the predictor differs across the response categories, thereby violating the PO assumption.
+If we had gotten a significant $p$ value for any of the rows in the above table, it would mean that a model with varying $\beta$ coefficients for the corresponding variable/interaction provided a better fit, and thus that the proportional odds assumption was violated.
 
-nominal_test(mod) 
+Suppose the proportional odds assumption was violated for the `heels` term. In this case, we could fit a **partial proportional odds** model, where $\beta$ is allowed to vary across categories for `heels`, making it a "nominal effect". This is done using the `nominal` argument to `clm`:
 
-# If the PO assumption is violated you can run a Partial Proportional Odds Model to relax this assumption. This model allows for certain predictors to be treated as nominal (i.e., varying across thresholds), while still assuming proportional odds for other predictors. 
-
-# mod.nom <- clm(agreement ~ height + categ, nominal = ~ categ, data = data) 
-
-### Can delete this - If you want to compare the two models (the original CLM and the Partial Proportional Odds Model), you can use a likelihood ratio test to assess model fit. 
-# anova(mod, mod.nom) 
+```{r}
+mod.ppo <- clm(top_shelf ~ heels + height:heels, nominal = ~ height, data = data)
+summary(mod.ppo)
 ```
+
+Notice that now we have 8 threshold coefficients: 4 $\theta$ intercepts and 4 $\beta$ coefficients. If we compare the fit of this model to the previous model, we get one of the rows output by `nominal_test`:
+
+```{r}
+anova(mod.ppo, mod)
+```
+
+## Link functions and latent variables
+
 ## Plotting CLMs
 
 Visualizing the associations between our predictors and our ordinal outcome variable is straightforward with the `ggeffects` library. This library has a function called `ggpredict` that allows us to predict and then plot the probabilities of each ordinal response level for the different levels of our predictors. To see how it works, we'll first import the necessary libraries:
@@ -173,7 +183,7 @@ The syntax for plotting categorical predictors is basically the same, except tha
 
 ```{r}
 # Generate predicted probabilities
-preds_cat <- ggpredict(mod, terms = c("categ"))
+preds_cat <- ggpredict(mod, terms = c("heels"))
 plot(preds_cat)
 ```
 
@@ -189,7 +199,7 @@ plot(preds_cat) + facet_wrap(~response.level, nrow = 1)
 So far, we've just used a simple call to `plot()`, but this doesn't give us much control over how the plot is rendered (e.g., which variable is represented by which aspect of the plot). For greater control, we can convert the output of `ggpredict` to a `data.frame` object that we then pass to `ggplot`:
 
 ```{r}
-preds <- ggpredict(mod, terms = c("categ"))
+preds <- ggpredict(mod, terms = c("heels"))
 df <- as.data.frame(preds,
                     terms_to_colnames = T) # This is important to include! Otherwise the column names won't correspond to your variable names
 head(df)
@@ -198,11 +208,11 @@ head(df)
 As we can see, we have a different row for each combination of predictor variable level and response variable level, along with the predicted probability of the response given the predictor, and the upper and lower boundaries of the confidence interval (95% by default). We can use this info to create any kind of plot we want:
 
 ```{r}
-ggplot(df, aes(y = predicted, x = agreement, fill = agreement)) +
+ggplot(df, aes(y = predicted, x = top_shelf, fill = top_shelf)) +
   geom_col(position = position_dodge()) +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
                 width = 0) +
-  facet_wrap(~categ, nrow = 1) +
+  facet_wrap(~heels, nrow = 1) +
   scale_fill_gradientn(colours = c('cornflowerblue', 'wheat', 'tomato')) +
   theme_classic()
 ```
@@ -213,13 +223,15 @@ We can do the same thing for continuous predictors:
 preds <- ggpredict(mod, terms = c("height [all]"))
 df <- as.data.frame(preds,
                     terms_to_colnames = T) # This is important to include!
-ggplot(df, aes(x = height, y = predicted, group = agreement)) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = agreement),
+ggplot(df, aes(x = height, y = predicted, group = top_shelf)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = top_shelf),
               alpha = 0.5) +
   geom_line() +
   scale_fill_gradientn(colours = c('cornflowerblue', 'wheat', 'tomato')) +
   theme_classic()
 ```
+
+This makes it clear what these plots actually represent: each line isn't a probability distribution, but rather, they track the rise and fall in likelihood of each response category across the values of a predictor variable.
 
 ## Mixed effects CLMs (CLMMs)
 
@@ -229,7 +241,7 @@ Mixed effects models allow us to account for any number of normally distributed 
 
 $$ P(Y \leq 1) = \sigma\left( \theta_1 + \beta x + u\right) \\ P(Y \leq 2) = \sigma\left( \theta_2 + \beta x + u\right) \\ \text{etc.} $$
 
-where $u$ is a random intercept. This means that the thresholds are shared across participants. Whereas before we drew an analogy between logistic regression and CLMs, here we can draw an analogy between mixed-effects logistic regression and CLMMs (indeed, when an ordinal variable has only two levels, the CLMMs and mixed-effects logistic regression yield equivalent results; Bousquet, 2021).
+where $u$ is a random variable representing, e.g., a particular participant's random intercept. This means that the thresholds are shared across participants. Whereas before we drew an analogy between logistic regression and CLMs, here we can draw an analogy between mixed-effects logistic regression and CLMMs (indeed, when an ordinal variable has only two levels, the CLMMs and mixed-effects logistic regression yield equivalent results; Bousquet, 2021).
 
 ```{r}
 set.seed(123)
