@@ -263,15 +263,16 @@ Let's suppose we did the same study longitudinally where we followed up with par
 
 ```{r}
 set.seed(123)
+n_obs_per <- 2
 n_ptpts <- 100
 ptpt_dfs <- list()
 for (ptpt_n in seq_len(n_ptpts)) {
-  ptpt_intercept <- rnorm(2, sd = 0.07)
+  ptpt_intercept <- rnorm(n_obs_per, sd = 0.07)
   cont <- 1.65 + ptpt_intercept + sort(rnorm(n_obs_per, sd = 0.6))
   ptpt_dfs[[ptpt_n]] <- data.frame(
     ptpt = ptpt_n,
     height = cont,
-    latent_var = cont + rnorm(2, sd = 0.05)
+    latent_var = cont + rnorm(n_obs_per, sd = 0.05)
   ) 
 } 
 data <- do.call(rbind, ptpt_dfs)
