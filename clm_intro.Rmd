@@ -1,3 +1,8 @@
+---
+title: clm_intro
+output: md_document
+---
+
 # Cumulative link models (CLMs)
 
 TODO:
