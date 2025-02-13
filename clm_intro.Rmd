@@ -58,16 +58,18 @@ plot(plogis(x) ~ x, ylab = 'σ(x)', type = 'l')
 It's helpful to think of CLMs as a series of logistic regressions. If our observations $Y$ fall into ordinal categories labeled 1, 2, 3, 4, and 5 (as with a Likert-type scale), our model is as follows:
 
 $$
-P(Y \leq 1) = \sigma(\theta_1 + \beta x) \\
-P(Y \leq 2) = \sigma(\theta_2 + \beta x) \\
-P(Y \leq 3) = \sigma(\theta_3 + \beta x) \\
-P(Y \leq 4) = \sigma(\theta_4 + \beta x) \\
-P(Y \leq 5) = 1 \\
+\begin{aligned}
+P(Y \leq 1) &= \sigma(\theta_1 + \beta x) \\
+P(Y \leq 2) &= \sigma(\theta_2 + \beta x) \\
+P(Y \leq 3) &= \sigma(\theta_3 + \beta x) \\
+P(Y \leq 4) &= \sigma(\theta_4 + \beta x) \\
+P(Y \leq 5) &= 1 \\
+\end{aligned}
 $$
 
 I.e., we are modelling the probability that the observation is less than or equal to 1, less than or equal to 2, etc., with a series of intercepts $\theta_1$, $\theta_2$, etc. and a single set of coefficients $\beta$. In CLM terminology, the $\theta$ variables are called **thresholds**.
 
-## CLM example
+## Ordinal data example
 
 Let's generate some imaginary data. Suppose we've measured people's heights, asked whether they wear high heels, and asked how often they get recruited to grab things off the top shelf.
 
@@ -107,23 +109,24 @@ It might be tempting to run `summary(lm(agreement ~ height, data = data))` and c
 Take a look here when we try to fit a `lm` on ordinal data - we make the false assumption of equal spacing between ordinal categories
 
 ```{r}
-# # Convert agreement to numeric for plotting
-# agreement_numeric <- as.numeric(data$agreement)
-# 
-# # Fit linear model
-# lm_model <- lm(agreement_numeric ~ height, data = data)
-# 
-# # Plot regression line on raw ordinal data
-# plot(height, agreement_numeric, 
-#      xlab = "Height", ylab = "Agreement (Numeric)",
-#      main = "Linear Model Fit with Ordinal Data",
-#      pch = 16, col = "blue")+
-# # Add linear regression line
-# abline(lm_model, col = "red")
+# Convert agreement to numeric for plotting
+data$top_shelf_num <- as.numeric(data$top_shelf)
 
+# Fit linear model
+mod.lin <- lm(top_shelf_num ~ height, data = data)
+
+# Plot regression line on raw ordinal data
+plot(top_shelf_num ~ height, data = data,
+     xlab = "Height", ylab = "Agreement (Numeric)",
+     main = "Linear Model Fit with Ordinal Data",
+     pch = 16, col = "blue")+
+# Add linear regression line
+abline(lm_model, col = "red")
 ```
 
 As you can see, the figure illustrates that the linear model does not appropriately capture the structure of the ordinal data. The fitted regression line does not align well with the categorical nature of the outcome.
+
+## Fitting a CLM
 
 Instead, we'll use the `clm` function from the `ordinal` package. Although other packages, such as the `polr` function from the `MASS` package, can estimate CLMs, the `ordinal` package provides additional flexibility. Specifically, it allows for different link functions, the estimation of partial proportional odds models, and the ability to structure thresholds by specifying them as equidistant or symmetrical if appropriate.
 

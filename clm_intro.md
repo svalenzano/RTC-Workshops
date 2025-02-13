@@ -73,11 +73,13 @@ our observations *Y* fall into ordinal categories labeled 1, 2, 3, 4,
 and 5 (as with a Likert-type scale), our model is as follows:
 
 $$
-P(Y \leq 1) = \sigma(\theta\_1 + \beta x) \\
-P(Y \leq 2) = \sigma(\theta\_2 + \beta x) \\
-P(Y \leq 3) = \sigma(\theta\_3 + \beta x) \\
-P(Y \leq 4) = \sigma(\theta\_4 + \beta x) \\
-P(Y \leq 5) = 1 \\
+\begin{aligned}
+P(Y \leq 1) &= \sigma(\theta\_1 + \beta x) \\
+P(Y \leq 2) &= \sigma(\theta\_2 + \beta x) \\
+P(Y \leq 3) &= \sigma(\theta\_3 + \beta x) \\
+P(Y \leq 4) &= \sigma(\theta\_4 + \beta x) \\
+P(Y \leq 5) &= 1 \\
+\end{aligned}
 $$
 
 I.e., we are modelling the probability that the observation is less than
