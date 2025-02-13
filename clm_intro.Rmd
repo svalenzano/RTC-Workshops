@@ -76,10 +76,10 @@ Let's generate some imaginary data. Suppose we've measured people's heights, ask
 ```{r}
 set.seed(123) # So that we all have the same random data
 ndata <- 1000
-cont <- rnorm(ndata, sd = 0.07)
+cont <- 1.65 + rnorm(ndata, sd = 0.07)
 categ_effs <- c('A' = 0.5, 'B' = 0.6)
 categ <- sample(names(categ_effs), ndata, replace = T)
-latent_var <- 1.65 + 0.5*cont + categ_effs[categ] + rnorm(100, sd = 0.05)
+latent_var <- 0.5*cont + categ_effs[categ] + rnorm(100, sd = 0.05)
 data <- data.frame(
   height = cont,
   heels = factor(categ,
@@ -163,16 +163,6 @@ Notice that now we have 8 threshold coefficients: 4 $\theta$ intercepts and 4 $\
 anova(mod.ppo, mod)
 ```
 
-## Structured thresholds
-
-So far, we've been working with **flexible** thresholds. This means the only restriction we impose on the $\theta$ intercepts is that they're monotonically increasing: i.e., $\theta_1 < \theta_2 < \theta_3 < \ldots$
-
-[Actually is this necessary? Can't find references for when you'd want to impose this, and even the manual is vague about this]
-
-## Link functions and latent variables
-
-[Include if there's time]
-
 ## Plotting CLMs
 
 Visualizing the associations between our predictors and our ordinal outcome variable is straightforward with the `ggeffects` library. This library has a function called `ggpredict` that allows us to predict and then plot the probabilities of each ordinal response level for the different levels of our predictors. To see how it works, we'll first import the necessary libraries:
@@ -225,12 +215,17 @@ As we can see, we have a different row for each combination of predictor variabl
 
 ```{r}
 ggplot(df, aes(y = predicted, x = top_shelf, fill = top_shelf)) +
-  geom_col(position = position_dodge()) +
+  geom_col(position = position_dodge(), show.legend = F) +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
                 width = 0) +
-  facet_wrap(~heels, nrow = 1) +
+  facet_wrap(~heels, nrow = 1,
+             labeller = as_labeller(c('No' = 'No heels',
+                                      'Yes' = 'Heels'))) +
   scale_fill_gradientn(colours = c('cornflowerblue', 'wheat', 'tomato')) +
-  theme_classic()
+  labs(y = 'Response probaility', x = 'Top shelf recruitment frequency') +
+  scale_x_discrete(limits = levels(data$top_shelf)) +
+  theme_classic() +
+  theme(axis.text.x = element_text(size = 6))
 ```
 
 We can do the same thing for continuous predictors:
@@ -243,7 +238,11 @@ ggplot(df, aes(x = height, y = predicted, group = top_shelf)) +
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = top_shelf),
               alpha = 0.5) +
   geom_line() +
-  scale_fill_gradientn(colours = c('cornflowerblue', 'wheat', 'tomato')) +
+  # scale_fill_gradientn(colours = c('cornflowerblue', 'wheat', 'tomato')) +
+  scale_fill_manual()
+  labs(x = 'Height (m)',
+       y = 'Response probability',
+       fill = sprintf('Top\nshelf\nrecruit.\nfreq.')) +
   theme_classic()
 ```
 
