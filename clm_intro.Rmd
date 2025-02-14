@@ -5,13 +5,6 @@ output: html_document
 
 # Cumulative link models (CLMs)
 
-TODO:
-
-1.  Figure out any distributional assumptions: if you use logit models, are you assuming a logistically distributed latent variable? Probit models, normally distributed latent variable? There's bound to be a question about this
-2.  How do we decide whether to use structured thresholds?
-3.  How can one plot CLMMs?
-4.  What if one of the predictors is ordinal?
-
 RTC Methods Club, February 20, 2025
 
 Isaac Kinley & Sabrina Valenzano
