@@ -248,7 +248,7 @@ Mixed effects models allow us to account for any number of normally distributed 
 
 $$ P(Y \leq 1) = \sigma\left( \theta_1 + \beta x + u\right) \\ P(Y \leq 2) = \sigma\left( \theta_2 + \beta x + u\right) \\ \text{etc.} $$
 
-where $u$ is a random variable representing, e.g., a particular participant's random intercept. In contrast, the $\theta$ thresholds and $\beta$ coefficients are fied effects that are shared across participants. Whereas before we drew an analogy between logistic regression and CLMs, here we can draw an analogy between mixed-effects logistic regression and CLMMs (indeed, when an ordinal variable has only two levels, the CLMMs and mixed-effects logistic regression yield equivalent results; Bousquet, 2021).
+where $u$ is a random variable representing, e.g., a particular participant's random intercept. In contrast, the $\theta$ thresholds and $\beta$ coefficients are fixed effects that are shared across participants. Whereas before we drew an analogy between logistic regression and CLMs, here we can draw an analogy between mixed-effects logistic regression and CLMMs (indeed, when an ordinal variable has only two levels, the CLMMs and mixed-effects logistic regression yield equivalent results; Bousquet, 2021).
 
 Let's suppose we did the same study longitudinally where we followed up with participants as kids and then adults:
 
