@@ -156,6 +156,10 @@ Notice that now we have 8 threshold coefficients: 4 $\theta$ intercepts and 4 $\
 anova(mod.ppo, mod)
 ```
 
+It's important to note that even if the `nominal_test` is significant, this doesn't necessarily mean you *can't* fit a proportional odds model. It's a judgment call:
+
+> "It is well known statistical wisdom that with enough data many goodness of fit tests become sensitive to even minor deviations of little practical relevance" [(Christensen, 2018)](https://cran.uni-muenster.de/web/packages/ordinal/vignettes/clm_article.pdf)
+
 ## Plotting CLMs
 
 Visualizing the associations between our predictors and our ordinal outcome variable is straightforward with the `ggeffects` library. This library has a function called `ggpredict` that allows us to predict and then plot the probabilities of each ordinal response level for the different levels of our predictors. To see how it works, we'll first import the necessary libraries:
@@ -285,3 +289,7 @@ Now we have 2 observations per participant. To fit a CLMM to this data, we just 
 mod.me <- clmm(top_shelf ~ height + (1|ptpt), data = data)
 summary(mod.me)
 ```
+
+## Conclusion
+
+In conclusion, CLMs offer a way to analyze ordinal data that doesn't have a steep learning curve if you are already familiar with multivariate regression. Just as we use ratings to capture some type of assumed continuous psychological construct/variable, CLMs use a latent variable to model ordinal responses. The authors of the `ordinal` package support a pragmatic approach to understand our data, exploring through plots and even fitting a linear model to explore patterns in the data and find a starting point.
