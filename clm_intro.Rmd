@@ -7,7 +7,7 @@ output: html_document
 
 RTC Methods Club, February 20, 2025
 
-Isaac Kinley & Sabrina Valenzano
+Sabrina Valenzano & Isaac Kinley
 
 ## Introduction
 
