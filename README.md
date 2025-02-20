@@ -10,3 +10,5 @@ Follow along as we:
 - Explore the equations behind CLMs and compare popular R packages.
 - Explore and compare methods for visualizing CLMs
 - Analyze clustered data using mixed-effects models (CLMMs)
+
+If you don't want to download anything, you can still follow along with a **non-interactive** R notebook [here](https://kinleyid.github.io/misc/clm_intro.html)
