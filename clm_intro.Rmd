@@ -143,7 +143,7 @@ nominal_test(mod)
 
 If we had gotten a significant $p$ value for any of the rows in the above table, it would mean that a model with varying $\beta$ coefficients for the corresponding variable/interaction provided a better fit, and thus that the proportional odds assumption was violated.
 
-Suppose the proportional odds assumption was violated for the `heels` term. In this case, we could fit a **partial proportional odds** model, where $\beta$ is allowed to vary across categories for `heels`, making it a "nominal effect". This is done using the `nominal` argument to `clm`:
+Suppose the proportional odds assumption was violated for the `heels` term. In this case, we could fit a **partial proportional odds** model, where $\beta$ is allowed to vary across categories for `height`, making it a "nominal effect". This is done using the `nominal` argument to `clm`:
 
 ```{r}
 mod.ppo <- clm(top_shelf ~ heels + height:heels, nominal = ~ height, data = data)
